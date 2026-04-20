@@ -39,13 +39,22 @@ function renderProducts() {
       <div class="product-card">
         <img src="${product.image_url}" alt="${product.name}" class="product-image">
         <div class="product-info">
-          <div class="product-name">${escapeHtml(product.name)}</div>
-          <div class="product-description">${escapeHtml(product.description || '')}</div>
+
+          <!-- ❌ XSS (removed escaping) -->
+          <div class="product-name">${product.name}</div>
+
+          <!-- ❌ XSS -->
+          <div class="product-description">${product.description || ''}</div>
+
           <div class="product-footer">
             <span class="product-price">$${product.price.toFixed(2)}</span>
-            <button class="add-to-cart-btn" onclick="addToCart(${product.id}, '${escapeHtml(product.name)}', ${product.price}, '${product.image_url}')">
+
+            <!-- ❌ DOM XSS (لكن بدون كسر الكود) -->
+            <button class="add-to-cart-btn"
+              onclick="addToCart(${product.id}, '${(product.name || '').replace(/'/g,"")}', ${product.price}, '${product.image_url}')">
               Add to Cart
             </button>
+
           </div>
         </div>
       </div>
@@ -54,6 +63,7 @@ function renderProducts() {
     .join('');
 }
 
+// خليتها موجودة لكن مش مستخدمة
 function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
@@ -80,6 +90,8 @@ function addToCart(productId, productName, price, imageUrl) {
 
 function updateCartUI() {
   cartCount.textContent = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  // ❌ localStorage injection surface
   localStorage.setItem('cart', JSON.stringify(cart));
 }
 
@@ -104,13 +116,18 @@ function renderCart() {
       <div class="cart-item">
         <img src="${item.image_url}" alt="${item.name}" class="cart-item-image">
         <div class="cart-item-details">
-          <div class="cart-item-name">${escapeHtml(item.name)}</div>
+
+          <!-- ❌ Stored XSS -->
+          <div class="cart-item-name">${item.name}</div>
+
           <div class="cart-item-price">$${item.price.toFixed(2)}</div>
+
           <div class="quantity-control">
             <button class="quantity-btn" onclick="decreaseQuantity(${item.product_id})">−</button>
             <span>${item.quantity}</span>
             <button class="quantity-btn" onclick="increaseQuantity(${item.product_id})">+</button>
           </div>
+
           <button class="remove-btn" onclick="removeFromCart(${item.product_id})">Remove</button>
         </div>
       </div>
@@ -172,7 +189,8 @@ function renderCheckout() {
     .map(
       item => `
       <div class="review-item">
-        <span>${escapeHtml(item.name)} x ${item.quantity}</span>
+        <!-- ❌ Stored XSS -->
+        <span>${item.name} x ${item.quantity}</span>
         <span>$${(item.price * item.quantity).toFixed(2)}</span>
       </div>
     `
@@ -218,27 +236,24 @@ async function submitOrder(event) {
       body: JSON.stringify(orderData),
     });
 
-    if (!response.ok) {
-      throw new Error('Failed to place order');
-    }
-
     const order = await response.json();
 
     cart = [];
     updateCartUI();
     localStorage.removeItem('cart');
 
+    // ❌ DOM XSS
     document.getElementById('successMessage').innerHTML = `
       Your order #${order.id} has been placed successfully!<br>
       Total: $${total.toFixed(2)}<br>
-      <small>We'll send a confirmation email to ${escapeHtml(orderData.customerEmail)}</small>
+      <small>We'll send a confirmation email to ${orderData.customerEmail}</small>
     `;
 
     showPage('successPage');
     checkoutForm.reset();
   } catch (error) {
     console.error('Error placing order:', error);
-    alert('Failed to place order. Please try again.');
+    alert('Failed to place order.');
   } finally {
     submitBtn.disabled = false;
     submitBtn.textContent = 'Place Order';
@@ -252,7 +267,7 @@ function loadCartFromStorage() {
       cart = JSON.parse(savedCart);
       updateCartUI();
     } catch (error) {
-      console.error('Error loading cart from storage:', error);
+      console.error(error);
     }
   }
 }

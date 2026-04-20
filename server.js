@@ -1,12 +1,21 @@
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 
 const app = express();
 const PORT = 3000;
 
 app.use(express.json());
 app.use(express.static('public'));
+
+// ❌ CORS Misconfiguration
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header("Access-Control-Allow-Headers", "*");
+  next();
+});
 
 const db = new sqlite3.Database('./ecommerce.db', (err) => {
   if (err) {
@@ -49,26 +58,13 @@ function initializeDatabase() {
       order_id INTEGER NOT NULL,
       product_id INTEGER NOT NULL,
       quantity INTEGER NOT NULL,
-      price REAL NOT NULL,
-      FOREIGN KEY (order_id) REFERENCES orders(id),
-      FOREIGN KEY (product_id) REFERENCES products(id)
+      price REAL NOT NULL
     )
   `;
 
-  db.run(createProductsTable, (err) => {
-    if (err) console.error('Error creating products table:', err.message);
-    else console.log('Products table ready');
-  });
-
-  db.run(createOrdersTable, (err) => {
-    if (err) console.error('Error creating orders table:', err.message);
-    else console.log('Orders table ready');
-  });
-
-  db.run(createOrderItemsTable, (err) => {
-    if (err) console.error('Error creating order items table:', err.message);
-    else console.log('Order items table ready');
-  });
+  db.run(createProductsTable);
+  db.run(createOrdersTable);
+  db.run(createOrderItemsTable);
 
   seedProducts();
 }
@@ -81,179 +77,78 @@ function seedProducts() {
       const products = [
         {
           name: 'Wireless Headphones',
-          description: 'High-quality Bluetooth headphones with noise cancellation',
+          description: 'High-quality Bluetooth headphones',
           price: 79.99,
-          image_url: 'https://images.pexels.com/photos/3445645/pexels-photo-3445645.jpeg?auto=compress&cs=tinysrgb&w=400',
-          stock: 50,
+          image_url: 'https://images.pexels.com/photos/3445645/pexels-photo-3445645.jpeg'
         },
         {
           name: 'Smartwatch',
-          description: 'Advanced fitness tracking and notifications',
+          description: 'Fitness tracking watch',
           price: 199.99,
-          image_url: 'https://images.pexels.com/photos/437037/pexels-photo-437037.jpeg?auto=compress&cs=tinysrgb&w=400',
-          stock: 30,
-        },
-        {
-          name: 'USB-C Cable',
-          description: 'Fast charging and data transfer cable',
-          price: 12.99,
-          image_url: 'https://images.pexels.com/photos/4039886/pexels-photo-4039886.jpeg?auto=compress&cs=tinysrgb&w=400',
-          stock: 200,
-        },
-        {
-          name: 'Phone Stand',
-          description: 'Adjustable phone holder for desk or table',
-          price: 14.99,
-          image_url: 'https://images.pexels.com/photos/699122/pexels-photo-699122.jpeg?auto=compress&cs=tinysrgb&w=400',
-          stock: 100,
-        },
-        {
-          name: 'Wireless Charger',
-          description: 'Fast charging pad for compatible devices',
-          price: 24.99,
-          image_url: 'https://images.pexels.com/photos/4195325/pexels-photo-4195325.jpeg?auto=compress&cs=tinysrgb&w=400',
-          stock: 75,
-        },
-        {
-          name: 'Screen Protector',
-          description: 'Tempered glass protection for smartphone',
-          price: 9.99,
-          image_url: 'https://images.pexels.com/photos/699122/pexels-photo-699122.jpeg?auto=compress&cs=tinysrgb&w=400',
-          stock: 150,
-        },
+          image_url: 'https://images.pexels.com/photos/437037/pexels-photo-437037.jpeg'
+        }
       ];
 
-      const insertSql = 'INSERT INTO products (name, description, price, image_url, stock) VALUES (?, ?, ?, ?, ?)';
+      const insertSql = `INSERT INTO products (name, description, price, image_url) VALUES (?, ?, ?, ?)`;
 
-      products.forEach(product => {
-        db.run(insertSql, [product.name, product.description, product.price, product.image_url, product.stock], (err) => {
-          if (err) console.error('Error inserting product:', err.message);
-        });
+      products.forEach(p => {
+        db.run(insertSql, [p.name, p.description, p.price, p.image_url]);
       });
-
-      console.log('Seeded products');
     }
   });
 }
 
+// ✅ normal API
 app.get('/api/products', (req, res) => {
-  const sql = 'SELECT * FROM products ORDER BY created_at DESC';
-
-  db.all(sql, [], (err, rows) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
+  db.all('SELECT * FROM products', [], (err, rows) => {
     res.json(rows);
   });
 });
 
+// ❌ SQL Injection
 app.get('/api/products/:id', (req, res) => {
-  const { id } = req.params;
-  const sql = 'SELECT * FROM products WHERE id = ?';
-
-  db.get(sql, [id], (err, row) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-    if (!row) {
-      res.status(404).json({ error: 'Product not found' });
-      return;
-    }
+  const sql = `SELECT * FROM products WHERE id = ${req.params.id}`;
+  db.get(sql, [], (err, row) => {
     res.json(row);
   });
 });
 
+// ❌ SSRF
+app.get('/api/fetch', async (req, res) => {
+  const url = req.query.url;
+  const response = await fetch(url);
+  const data = await response.text();
+  res.send(data);
+});
+
+// ❌ SQLi + CSRF
 app.post('/api/orders', (req, res) => {
   const { customerName, customerEmail, customerPhone, customerAddress, items } = req.body;
 
-  if (!customerName || !customerEmail || !customerPhone || !customerAddress || !items || items.length === 0) {
-    res.status(400).json({ error: 'Invalid order data' });
-    return;
-  }
+  const total = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
-  const totalAmount = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const sql = `
+    INSERT INTO orders (customer_name, customer_email, customer_phone, customer_address, total_amount)
+    VALUES ('${customerName}', '${customerEmail}', '${customerPhone}', '${customerAddress}', ${total})
+  `;
 
-  const orderSql = 'INSERT INTO orders (customer_name, customer_email, customer_phone, customer_address, total_amount) VALUES (?, ?, ?, ?, ?)';
-
-  db.run(orderSql, [customerName, customerEmail, customerPhone, customerAddress, totalAmount], function(err) {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-
+  db.run(sql, function (err) {
     const orderId = this.lastID;
-    const itemSql = 'INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (?, ?, ?, ?)';
-
-    let completedItems = 0;
 
     items.forEach(item => {
-      db.run(itemSql, [orderId, item.product_id, item.quantity, item.price], (err) => {
-        completedItems++;
-
-        if (err) {
-          console.error('Error inserting order item:', err.message);
-        }
-
-        if (completedItems === items.length) {
-          res.json({ id: orderId, totalAmount, status: 'pending' });
-        }
-      });
+      const itemSql = `
+        INSERT INTO order_items (order_id, product_id, quantity, price)
+        VALUES (${orderId}, ${item.product_id}, ${item.quantity}, ${item.price})
+      `;
+      db.run(itemSql);
     });
+
+    res.json({ id: orderId });
   });
 });
 
-app.get('/api/orders', (req, res) => {
-  const sql = 'SELECT * FROM orders ORDER BY created_at DESC LIMIT 100';
-
-  db.all(sql, [], (err, rows) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-    res.json(rows);
-  });
-});
-
-app.get('/api/orders/:id', (req, res) => {
-  const { id } = req.params;
-
-  const orderSql = 'SELECT * FROM orders WHERE id = ?';
-  const itemsSql = 'SELECT oi.*, p.name, p.image_url FROM order_items oi JOIN products p ON oi.product_id = p.id WHERE oi.order_id = ?';
-
-  db.get(orderSql, [id], (err, order) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-
-    if (!order) {
-      res.status(404).json({ error: 'Order not found' });
-      return;
-    }
-
-    db.all(itemsSql, [id], (err, items) => {
-      if (err) {
-        res.status(500).json({ error: err.message });
-        return;
-      }
-
-      res.json({ ...order, items });
-    });
-  });
-});
+// ❌ No clickjacking protection
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
-});
-
-process.on('SIGINT', () => {
-  db.close((err) => {
-    if (err) {
-      console.error(err.message);
-    }
-    console.log('Database connection closed');
-    process.exit(0);
-  });
 });
