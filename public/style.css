@@ -160,6 +160,7 @@ body {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   transition: transform 0.3s, box-shadow 0.3s;
   cursor: pointer;
+  margin-top: 20px;
 }
 
 .product-card:hover {
@@ -204,6 +205,87 @@ body {
   color: #1a73e8;
 }
 
+/* Container */
+.product-details {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 20px;
+}
+
+/* Card */
+.product-details-card {
+  display: flex;
+  gap: 40px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 30px;
+  max-width: 900px;
+  width: 100%;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  transition: transform 0.3s ease;
+}
+
+.product-details-card:hover {
+  transform: translateY(-5px);
+}
+
+/* Image */
+.details-image {
+  width: 350px;
+  height: 350px;
+  object-fit: cover;
+  border-radius: 12px;
+  background: #f5f5f5;
+}
+
+/* Info */
+.details-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 15px;
+  flex: 1;
+}
+
+/* Title */
+.details-info h2 {
+  font-size: 28px;
+  margin: 0;
+  color: #222;
+}
+
+/* Description */
+.details-info p {
+  font-size: 16px;
+  color: #666;
+  line-height: 1.6;
+}
+
+/* Price */
+.details-info h3 {
+  font-size: 24px;
+  color: #2e7d32;
+  margin: 10px 0;
+}
+
+/* Button */
+.details-info button {
+  padding: 12px 18px;
+  border: none;
+  border-radius: 8px;
+  background: #111827;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  transition: 0.3s;
+  width: fit-content;
+}
+
+.details-info button:hover {
+  background: #374151;
+}
+
 .add-to-cart-btn {
   background: #1a73e8;
   color: white;
@@ -213,6 +295,7 @@ body {
   cursor: pointer;
   font-weight: 500;
   transition: background 0.3s;
+  margin-right: 10px;
 }
 
 .add-to-cart-btn:hover {

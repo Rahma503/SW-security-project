@@ -26,6 +26,17 @@ async function loadProducts() {
     productsList.innerHTML = '<p style="text-align:center;color:#999;">Failed to load products</p>';
   }
 }
+async function viewProduct(id) {
+  try {
+    const res = await fetch(`/api/products/${id}`);
+    const product = await res.json();
+
+    renderProductDetails(product);
+    showPage('detailsPage');
+  } catch (err) {
+    console.error(err);
+  }
+}
 
 function renderProducts() {
   if (!products || products.length === 0) {
@@ -50,10 +61,14 @@ function renderProducts() {
             <span class="product-price">$${product.price.toFixed(2)}</span>
 
             <!-- ❌ DOM XSS (لكن بدون كسر الكود) -->
-            <button class="add-to-cart-btn"
-              onclick="addToCart(${product.id}, '${(product.name || '').replace(/'/g,"")}', ${product.price}, '${product.image_url}')">
-              Add to Cart
-            </button>
+           <button class="add-to-cart-btn"
+                onclick="viewProduct(${product.id})">
+               View Details
+              </button>
+
+        <button class="add-to-cart-btn" onclick="addToCart(${product.id}, '${(product.name || '').replace(/'/g, "")}', ${product.price}, '${product.image_url}')">
+          Add to Cart
+        </button>
 
           </div>
         </div>
@@ -61,6 +76,31 @@ function renderProducts() {
     `
     )
     .join('');
+}
+
+
+function renderProductDetails(product) {
+  const container = document.getElementById('productDetails');
+
+  container.innerHTML = `
+    <div class="product-details-card">
+      <img src="${product.image_url}" class="details-image">
+
+      <div class="details-info">
+        <!-- ❌ XSS هنا -->
+        <h2>${product.name}</h2>
+
+        <!-- ❌ XSS -->
+        <p>${product.description || ''}</p>
+
+        <h3>$${product.price}</h3>
+
+        <button class="add-to-cart-btn" onclick="addToCart(${product.id}, '${(product.name || '').replace(/'/g, "")}', ${product.price}, '${product.image_url}')">
+          Add to Cart
+        </button>
+      </div>
+    </div>
+  `;
 }
 
 // خليتها موجودة لكن مش مستخدمة

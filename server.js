@@ -1,7 +1,7 @@
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
-const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 
 const app = express();
 const PORT = 3000;
@@ -79,16 +79,39 @@ function seedProducts() {
           name: 'Wireless Headphones',
           description: 'High-quality Bluetooth headphones',
           price: 79.99,
-          image_url: 'https://images.pexels.com/photos/3445645/pexels-photo-3445645.jpeg'
+          image_url: 'https://images.unsplash.com/photo-1518444065439-e933c06ce9cd'
         },
         {
           name: 'Smartwatch',
           description: 'Fitness tracking watch',
           price: 199.99,
-          image_url: 'https://images.pexels.com/photos/437037/pexels-photo-437037.jpeg'
+          image_url: 'https://images.unsplash.com/photo-1517433456452-f9633a875f6f'
+        },
+        {
+          name: 'Laptop',
+          description: 'Powerful laptop for work and gaming',
+          price: 999.99,
+          image_url: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8'
+        },
+        {
+          name: 'Gaming Mouse',
+          description: 'RGB high precision gaming mouse',
+          price: 49.99,
+          image_url: 'https://images.unsplash.com/photo-1587202372775-e229f172b9d7'
+        },
+        {
+          name: 'Keyboard',
+          description: 'Mechanical keyboard',
+          price: 89.99,
+          image_url: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c'
+        },
+        {
+          name: 'Monitor',
+          description: '4K Ultra HD Monitor',
+          price: 299.99,
+          image_url: 'https://images.unsplash.com/photo-1527443154391-507e9dc6c5cc'
         }
       ];
-
       const insertSql = `INSERT INTO products (name, description, price, image_url) VALUES (?, ?, ?, ?)`;
 
       products.forEach(p => {
